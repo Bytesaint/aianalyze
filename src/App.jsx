@@ -29,13 +29,14 @@ function App() {
             // `FileReader` result is `data:image/jpeg;base64,...`.
             // I should strip the prefix.
             const base64Content = base64Image.split(',')[1];
+            const mimeType = base64Image.split(';')[0].split(':')[1];
 
             const response = await fetch('/api/analyze', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ image: base64Content }),
+                body: JSON.stringify({ image: base64Content, mimeType }),
             });
 
             if (!response.ok) {

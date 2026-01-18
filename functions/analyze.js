@@ -5,7 +5,7 @@ export default async (req, context) => {
     }
 
     try {
-        const { image } = await req.json();
+        const { image, mimeType } = await req.json();
 
         if (!image) {
             return new Response(JSON.stringify({ error: "No image provided" }), {
@@ -62,27 +62,27 @@ JSON OUTPUT SCHEMA:
 END SYSTEM
 `;
 
-        // Call Gemini API
-        // Note: The user requested 'gemini-3-flash'. This might be a future model or a specific endpoint. 
-        // If 'gemini-3-flash' fails, we might need 'gemini-1.5-flash'.
-        // We will use the URL provided by the user.
-        const response = await fetch("https://api.ai.google/v1/models/gemini-3-flash:generateContent", {
+        // Call Gemini API (v1beta)
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${apiKey}`,
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                input: [
-                    {
-                        role: "system",
-                        content: SYSTEM_PROMPT
-                    },
-                    {
-                        role: "user_image",
-                        content: image // Expecting base64 string
-                    }
-                ]
+                system_instruction: {
+                    parts: [{ text: SYSTEM_PROMPT }]
+                },
+                contents: [{
+                    parts: [
+                        {
+                            inline_data: {
+                                mime_type: mimeType || "image/png",
+                                data: image
+                            }
+                        },
+                        { text: "Analyze this chart image." }
+                    ]
+                }]
             })
         });
 
@@ -96,7 +96,33 @@ END SYSTEM
         }
 
         const data = await response.json();
-        return new Response(JSON.stringify(data), {
+        // Extract the text from the response structure
+        // Gemini response: data.candidates[0].content.parts[0].text
+        // The text is expected to be JSON.
+
+        let responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!responseText) {
+            throw new Error("No content generated");
+        }
+
+        // Clean up markdown code blocks if present
+        responseText = responseText.replace(/```json\n?|```/g, "").trim();
+
+        let parsedData;
+        try {
+            parsedData = JSON.parse(responseText);
+        } catch (e) {
+            console.error("JSON Parse Error:", e);
+            console.log("Raw Text:", responseText);
+            // Return raw text if parse fails, or handled error
+            return new Response(JSON.stringify({ error: "Failed to parse AI response as JSON", raw: responseText }), {
+                status: 500,
+                headers: { "Content-Type": "application/json" }
+            });
+        }
+
+        return new Response(JSON.stringify(parsedData), {
             headers: { "Content-Type": "application/json" },
         });
 
