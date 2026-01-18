@@ -63,8 +63,8 @@ END SYSTEM
 `;
 
         // Call Gemini API (v1beta)
-        // User requested "gemini 3 pro", defaulting to the latest stable Pro model: gemini-1.5-pro
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`, {
+        // User requested "gemini-pro-latest"
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent?key=${apiKey}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
